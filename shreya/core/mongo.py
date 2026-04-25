@@ -148,6 +148,9 @@ class MongoDB:
 
         client_index = self.assistant[chat_id] - 1
         logger.info(f"get_assistant for chat {chat_id} returned assistant at index {client_index}")
+        from shreya import userbot
+        ub = userbot.clients[client_index]
+        logger.info(f"Assistant details: ID={ub.id}, Username={ub.username}")
         return anon.clients[client_index]
 
     async def get_client(self, chat_id: int):

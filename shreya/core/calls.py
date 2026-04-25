@@ -55,7 +55,22 @@ class TgCall(PyTgCalls):
             if not client:
                 logger.error(f"No assistant found for chat {chat_id}")
                 return
-            logger.info(f"Using assistant {client.name} (@{client.username}) for chat {chat_id}")
+            
+            # Find the corresponding userbot client for logging
+            from shreya import userbot
+            ub_client = None
+            for ub in userbot.clients:
+                if ub.id == getattr(client, "user_id", None) or any(c == client for c in self.clients):
+                    # In pytgcalls, the index usually matches
+                    index = self.clients.index(client)
+                    ub_client = userbot.clients[index]
+                    break
+            
+            if ub_client:
+                logger.info(f"Using assistant ID={ub_client.id} (@{ub_client.username}) for chat {chat_id}")
+            else:
+                logger.info(f"Using assistant {client} for chat {chat_id}")
+                
             _lang = await lang.get_lang(chat_id)
             _thumb = (
                 await thumb.generate(media)
