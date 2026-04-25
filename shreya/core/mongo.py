@@ -146,7 +146,9 @@ class MongoDB:
                 num = await self.set_assistant(chat_id)
             self.assistant[chat_id] = num
 
-        return anon.clients[self.assistant[chat_id] - 1]
+        client_index = self.assistant[chat_id] - 1
+        logger.info(f"get_assistant for chat {chat_id} returned assistant at index {client_index}")
+        return anon.clients[client_index]
 
     async def get_client(self, chat_id: int):
         if chat_id not in self.assistant:

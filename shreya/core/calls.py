@@ -49,36 +49,36 @@ class TgCall(PyTgCalls):
         media: Media | Track,
         seek_time: int = 0,
     ) -> None:
-        logger.info(f"play_media called for chat {chat_id}")
-        client = await db.get_assistant(chat_id)
-        if not client:
-            logger.error(f"No assistant found for chat {chat_id}")
-            return
-        logger.info(f"Using assistant {client.name} (@{client.username}) for chat {chat_id}")
-        _lang = await lang.get_lang(chat_id)
-        _thumb = (
-            await thumb.generate(media)
-            if isinstance(media, Track)
-            else config.DEFAULT_THUMB
-        ) if config.THUMB_GEN else None
-
-        if not media.file_path:
-            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-            return await self.play_next(chat_id)
-
-        stream = types.MediaStream(
-            media_path=media.file_path,
-            audio_parameters=types.AudioQuality.HIGH,
-            video_parameters=types.VideoQuality.HD_720p,
-            audio_flags=types.MediaStream.Flags.REQUIRED,
-            video_flags=(
-                types.MediaStream.Flags.AUTO_DETECT
-                if media.video
-                else types.MediaStream.Flags.IGNORE
-            ),
-            ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
-        )
         try:
+            logger.info(f"play_media called for chat {chat_id}")
+            client = await db.get_assistant(chat_id)
+            if not client:
+                logger.error(f"No assistant found for chat {chat_id}")
+                return
+            logger.info(f"Using assistant {client.name} (@{client.username}) for chat {chat_id}")
+            _lang = await lang.get_lang(chat_id)
+            _thumb = (
+                await thumb.generate(media)
+                if isinstance(media, Track)
+                else config.DEFAULT_THUMB
+            ) if config.THUMB_GEN else None
+
+            if not media.file_path:
+                await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+                return await self.play_next(chat_id)
+
+            stream = types.MediaStream(
+                media_path=media.file_path,
+                audio_parameters=types.AudioQuality.HIGH,
+                video_parameters=types.VideoQuality.HD_720p,
+                audio_flags=types.MediaStream.Flags.REQUIRED,
+                video_flags=(
+                    types.MediaStream.Flags.AUTO_DETECT
+                    if media.video
+                    else types.MediaStream.Flags.IGNORE
+                ),
+                ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
+            )
             logger.info(f"Starting playback for chat {chat_id} with file {media.file_path}")
             await client.play(
                 chat_id=chat_id,
