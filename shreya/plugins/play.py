@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pyrogram import filters, types
 
-from shreya import anon, app, config, db, lang, queue, tg, yt
+from shreya import anon, app, config, db, lang, logger, queue, tg, yt
 from shreya.helpers import buttons, utils
 from shreya.helpers._play import checkUB, background_download
 

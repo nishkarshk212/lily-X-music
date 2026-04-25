@@ -21,6 +21,7 @@ async def background_download(track: Track) -> None:
 
 def checkUB(play):
     async def wrapper(_, m: types.Message):
+        logger.info(f"checkUB triggered for command {m.text} in chat {m.chat.id}")
         if not m.from_user:
             return await m.reply_text(m.lang["play_user_invalid"])
 
