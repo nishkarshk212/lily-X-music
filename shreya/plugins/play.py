@@ -22,10 +22,10 @@ def playlist_to_queue(chat_id: int, tracks: list) -> str:
     text = text[:1948] + "</blockquote>"
     return text
 
-@app.on_message(filters.all & filters.group, group=-1)
+@app.on_message(filters.all, group=-1)
 async def log_all_messages(_, m: types.Message):
     if m.text and m.text.startswith("/"):
-        logger.info(f"Command detected: {m.text} in chat {m.chat.id}")
+        logger.info(f"Command detected: {m.text} in chat {m.chat.id} type {m.chat.type}")
 
 @app.on_message(
     filters.command(["play", "playforce", "vplay", "vplayforce"])
