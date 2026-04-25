@@ -37,6 +37,7 @@ async def play_hndlr(
     video: bool = False,
     url: str = None,
 ) -> None:
+    logger.info(f"Play command received in chat {m.chat.id} from user {m.from_user.id}")
     sent = await m.reply_text(m.lang["play_searching"])
     file = None
     mention = m.from_user.mention
