@@ -135,16 +135,20 @@ class YouTube:
         
         async with aiohttp.ClientSession() as session:
             try:
+                logger.info(f"Trying NexGen API for {video_id} ({api_type})")
                 for attempt in range(5):
                     async with session.get(api_url) as response:
+                        logger.info(f"NexGen API response status: {response.status}")
                         if response.status != 200:
                             break
                         
                         data = await response.json()
                         status = data.get("status", "").lower()
+                        logger.info(f"NexGen API status for {video_id}: {status}")
 
                         if status == "done":
                             download_url = data.get("link")
+                            logger.info(f"NexGen API download link: {download_url}")
                             if download_url:
                                 async with session.get(download_url) as file_response:
                                     if file_response.status == 200:
@@ -155,11 +159,13 @@ class YouTube:
                                                 if not chunk:
                                                     break
                                                 f.write(chunk)
+                                        logger.info(f"Successfully downloaded via NexGen: {filename}")
                                         return filename
                             break
                         elif status == "downloading":
                             await asyncio.sleep(5)
                         else:
+                            logger.warning(f"Unexpected NexGen status: {status}")
                             break
             except Exception as e:
                 logger.error(f"NexGen API failed for {video_id}: {e}")
