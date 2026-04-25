@@ -121,13 +121,55 @@ class YouTube:
         return tracks
 
     async def download(self, video_id: str, video: bool = False) -> str | None:
+        from shreya import config
         url = self.base + video_id
-        ext = "mp4" if video else "webm"
+        ext = "mp4" if video else "mp3"
         filename = f"downloads/{video_id}.{ext}"
 
         if Path(filename).exists():
             return filename
 
+        # Try NexGen API first (First Priority)
+        api_type = "video" if video else "song"
+        api_url = f"{config.API_URL}/{api_type}/{video_id}?api={config.API_KEY}"
+        
+        async with aiohttp.ClientSession() as session:
+            try:
+                for attempt in range(5):
+                    async with session.get(api_url) as response:
+                        if response.status != 200:
+                            break
+                        
+                        data = await response.json()
+                        status = data.get("status", "").lower()
+
+                        if status == "done":
+                            download_url = data.get("link")
+                            if download_url:
+                                async with session.get(download_url) as file_response:
+                                    if file_response.status == 200:
+                                        os.makedirs("downloads", exist_ok=True)
+                                        with open(filename, 'wb') as f:
+                                            while True:
+                                                chunk = await file_response.content.read(8192)
+                                                if not chunk:
+                                                    break
+                                                f.write(chunk)
+                                        return filename
+                            break
+                        elif status == "downloading":
+                            await asyncio.sleep(5)
+                        else:
+                            break
+            except Exception as e:
+                logger.error(f"NexGen API failed for {video_id}: {e}")
+
+        # Fallback to YouTube DL (Second Priority)
+        ext = "mp4" if video else "webm"
+        filename = f"downloads/{video_id}.{ext}"
+        if Path(filename).exists():
+            return filename
+            
         cookie = self.get_cookies()
         base_opts = {
             "outtmpl": "downloads/%(id)s.%(ext)s",
