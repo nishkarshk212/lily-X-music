@@ -28,7 +28,10 @@ async def idle():
             loop.add_signal_handler(sig, stop_event.set)
     await stop_event.wait()
 
+from shreya.core.cleanup import auto_clean
+
 async def main():
+    auto_clean()
     await db.connect()
     await app.boot()
     await userbot.boot()
