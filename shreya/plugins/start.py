@@ -20,6 +20,16 @@ async def _help(_, m: types.Message):
     )
 
 
+@app.on_message(filters.command(["groups"]) & filters.user(config.OWNER_ID))
+async def list_groups(_, message: types.Message):
+    groups = ""
+    async for dialog in app.get_dialogs():
+        if dialog.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+            groups += f"{dialog.chat.title} ({dialog.chat.id})\n"
+    if not groups:
+        groups = "No groups found."
+    await message.reply_text(groups)
+
 @app.on_message(filters.command(["start"]))
 @lang.language()
 async def start(_, message: types.Message):

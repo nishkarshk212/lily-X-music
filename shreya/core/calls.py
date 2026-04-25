@@ -49,7 +49,12 @@ class TgCall(PyTgCalls):
         media: Media | Track,
         seek_time: int = 0,
     ) -> None:
+        logger.info(f"play_media called for chat {chat_id}")
         client = await db.get_assistant(chat_id)
+        if not client:
+            logger.error(f"No assistant found for chat {chat_id}")
+            return
+        logger.info(f"Using assistant {client.name} (@{client.username}) for chat {chat_id}")
         _lang = await lang.get_lang(chat_id)
         _thumb = (
             await thumb.generate(media)
@@ -74,11 +79,13 @@ class TgCall(PyTgCalls):
             ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
         )
         try:
+            logger.info(f"Starting playback for chat {chat_id} with file {media.file_path}")
             await client.play(
                 chat_id=chat_id,
                 stream=stream,
                 config=types.GroupCallConfig(auto_start=False),
             )
+            logger.info(f"Playback started successfully for chat {chat_id}")
             if not seek_time:
                 media.time = 1
                 await db.add_call(chat_id)
@@ -130,6 +137,10 @@ class TgCall(PyTgCalls):
         except RTMPStreamingUnsupported:
             await self.stop(chat_id)
             await message.edit_text(_lang["error_rtmp"])
+        except Exception as e:
+            logger.error(f"Error starting playback for chat {chat_id}: {e}", exc_info=True)
+            await self.stop(chat_id)
+            await message.edit_text(_lang["error_tg_server"])
 
 
     async def replay(self, chat_id: int) -> None:
