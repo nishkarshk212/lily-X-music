@@ -24,8 +24,7 @@ def playlist_to_queue(chat_id: int, tracks: list) -> str:
 
 @app.on_message(filters.all, group=-1)
 async def log_all_messages(_, m: types.Message):
-    if m.text and m.text.startswith("/"):
-        logger.info(f"Command detected: {m.text} in chat {m.chat.id} type {m.chat.type}")
+    logger.info(f"Message received: {m.text or m.caption or 'Media'} in chat {m.chat.id} from {m.from_user.id if m.from_user else 'System'}")
 
 @app.on_message(
     filters.command(["play", "playforce", "vplay", "vplayforce"])
