@@ -62,7 +62,8 @@ class Userbot(Client):
             await ub.join_chat("fallenx")
         except Exception:
             pass
-        logger.info(f"Assistant {num} started as @{client.username}")
+        assistant_identity = f"@{client.username}" if client.username else f"ID:{client.id}"
+        logger.info(f"Assistant {num} started as {assistant_identity}")
 
     async def boot(self):
         """
