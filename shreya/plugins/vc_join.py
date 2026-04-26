@@ -32,7 +32,7 @@ async def vc_join_watcher(client, update, users, chats):
                         user = await client.get_users(user_id)
                         await client.send_message(
                             chat_id,
-                            f"{user.mention}\n{user.id}"
+                            f"<blockquote>ɴᴀᴍᴇ : {user.mention}\nᴜꜱᴇʀ ɪᴅ : <code>{user.id}</code>\nᴇɴᴊᴏʏ ɪɴ ᴠᴏɪᴄᴇ ᴄʜᴀᴛ</blockquote>"
                         )
                     except Exception:
                         pass
@@ -42,5 +42,5 @@ async def vc_join_watcher(client, update, users, chats):
 async def vc_invited_handler(_, m: types.Message):
     for user in m.video_chat_members_invited.users:
         await m.reply_text(
-            f"{user.mention}\n{user.id}"
+            f"<blockquote>ɴᴀᴍᴇ : {user.mention}\nᴜꜱᴇʀ ɪᴅ : <code>{user.id}</code>\nᴇɴᴊᴏʏ ɪɴ ᴠᴏɪᴄᴇ ᴄʜᴀᴛ</blockquote>"
         )
