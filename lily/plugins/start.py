@@ -42,24 +42,32 @@ async def start(_, message: types.Message):
             return await _help(_, message)
 
         private = message.chat.type == enums.ChatType.PRIVATE
+        logger.info(f"Start command - private chat: {private}")
+        
         _text = (
             message.lang["start_pm"].format(message.from_user.mention if message.from_user else "User", app.mention)
             if private
             else message.lang["start_gp"].format(message.from_user.mention if message.from_user else "User", app.mention)
         )
+        logger.info(f"Start text generated: {_text[:50]}...")
         
+        logger.info(f"START_IMG config: {config.START_IMG}")
         if not config.START_IMG:
+            logger.info("No START_IMG, sending text only")
             return await message.reply_text(_text)
 
         _img = random.choice(config.START_IMG) if isinstance(config.START_IMG, list) else config.START_IMG
+        logger.info(f"Selected image: {_img}")
 
         key = buttons.start_key(message.lang, private)
+        logger.info("Sending start photo...")
         await message.reply_photo(
             photo=_img,
             caption=_text,
             reply_markup=key,
             quote=not private,
         )
+        logger.info("Start photo sent successfully")
 
         if private and message.from_user:
             if not await db.is_user(message.from_user.id):
@@ -71,6 +79,10 @@ async def start(_, message: types.Message):
                 await db.add_chat(message.chat.id)
     except Exception as e:
         logger.error(f"Error in start command: {e}", exc_info=True)
+        try:
+            await message.reply_text("An error occurred. Please try again later.")
+        except:
+            pass
 
 
 @app.on_message(filters.command(["playmode", "settings"]) & filters.group & ~app.bl_users)
