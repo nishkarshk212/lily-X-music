@@ -51,8 +51,10 @@ lang = Language()
 
 from lily.core.telegram import Telegram
 from lily.core.youtube import YouTube
+from lily.core.youtube_api import YouTubeAPI as YouTubeAPIv3
 tg = Telegram()
 yt = YouTube()
+yt_api = YouTubeAPIv3()
 
 from lily.helpers import Queue, Thumbnail
 queue = Queue()

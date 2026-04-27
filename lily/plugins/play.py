@@ -26,10 +26,14 @@ def playlist_to_queue(chat_id: int, tracks: list) -> str:
 async def log_all_messages(_, m: types.Message):
     logger.info(f"Message received: {m.text or m.caption or 'Media'} in chat {m.chat.id} from {m.from_user.id if m.from_user else 'System'}")
 
+# Debug: Log all messages to see if filters are working
+@app.on_message(filters.command(["play", "playforce", "vplay", "vplayforce"]), group=-10)
+async def debug_play_filter(_, m: types.Message):
+    logger.info(f"DEBUG: Play command detected in filter - chat: {m.chat.id}, type: {m.chat.type}, user: {m.from_user.id if m.from_user else 'None'}")
+
 @app.on_message(
     filters.command(["play", "playforce", "vplay", "vplayforce"])
     & filters.group
-    & ~app.bl_users
 )
 @lang.language()
 @checkUB
@@ -42,6 +46,7 @@ async def play_hndlr(
     url: str = None,
 ) -> None:
     try:
+        logger.info(f">>> PLAY HANDLER TRIGGERED <<< in chat {m.chat.id} from user {m.from_user.id}")
         logger.info(f"Play command received in chat {m.chat.id} from user {m.from_user.id}")
         sent = await m.reply_text(m.lang["play_searching"])
         file = None

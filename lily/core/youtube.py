@@ -167,6 +167,39 @@ class YouTube:
                         continue
                         
                 logger.error(f"NexGen API failed after {max_attempts} attempts for {video_id}")
+                
+                # Fallback to NubCoder API if NexGen fails
+                logger.info(f"Trying fallback NubCoder API for {video_id}")
+                nubcoder_url = f"{config.API_BASE_URL}/download/{video_id}?token={config.API_TOKEN}"
+                
+                try:
+                    async with session.get(nubcoder_url) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            download_url = data.get("download_url") or data.get("link") or data.get("url")
+                            
+                            if download_url:
+                                logger.info(f"NubCoder API download link received for {video_id}")
+                                async with session.get(download_url) as file_response:
+                                    if file_response.status == 200:
+                                        os.makedirs("downloads", exist_ok=True)
+                                        with open(filename, 'wb') as f:
+                                            while True:
+                                                chunk = await file_response.content.read(8192)
+                                                if not chunk:
+                                                    break
+                                                f.write(chunk)
+                                        logger.info(f"Successfully downloaded via NubCoder: {filename}")
+                                        return filename
+                                    else:
+                                        logger.error(f"NubCoder file download failed: {file_response.status}")
+                            else:
+                                logger.error(f"No download link in NubCoder response")
+                        else:
+                            logger.error(f"NubCoder API returned status {response.status}")
+                except Exception as e:
+                    logger.error(f"NubCoder API fallback failed: {e}", exc_info=True)
+                    
             except Exception as e:
                 logger.error(f"NexGen API failed for {video_id}: {e}", exc_info=True)
         

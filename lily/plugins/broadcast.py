@@ -16,8 +16,12 @@ broadcasting = False
 @app.on_message(filters.command(["broadcast"]) & app.sudoers)
 @lang.language()
 async def _broadcast(_, message: types.Message):
+    from lily import logger
     global broadcasting
+    logger.info(f">>> BROADCAST HANDLER TRIGGERED <<< by {message.from_user.id}")
+    
     if not message.reply_to_message:
+        logger.info(f"Broadcast: No reply to message, showing usage")
         return await message.reply_text(message.lang["gcast_usage"])
 
     if broadcasting:
