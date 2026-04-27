@@ -9,6 +9,7 @@ import asyncio
 import aiohttp
 from pathlib import Path
 
+import yt_dlp
 from py_yt import Playlist, VideosSearch
 
 from lily import logger
@@ -199,6 +200,41 @@ class YouTube:
                             logger.error(f"NubCoder API returned status {response.status}")
                 except Exception as e:
                     logger.error(f"NubCoder API fallback failed: {e}", exc_info=True)
+                
+                # Second fallback: Use yt-dlp to download directly from YouTube
+                logger.info(f"Trying second fallback yt-dlp for {video_id}")
+                try:
+                    youtube_url = f"https://www.youtube.com/watch?v={video_id}"
+                    logger.info(f"Downloading via yt-dlp: {youtube_url}")
+                    
+                    os.makedirs("downloads", exist_ok=True)
+                    
+                    ydl_opts = {
+                        'format': 'bestaudio/best',
+                        'postprocessors': [{
+                            'key': 'FFmpegExtractAudio',
+                            'preferredcodec': 'mp3' if not video else 'mp4',
+                            'preferredquality': '192',
+                        }],
+                        'outtmpl': f'downloads/{video_id}.%(ext)s',
+                        'quiet': True,
+                        'no_warnings': True,
+                        'extract_flat': False,
+                    }
+                    
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        ydl.download([youtube_url])
+                        
+                        # Check if file was created
+                        expected_file = f"downloads/{video_id}.mp3" if not video else f"downloads/{video_id}.mp4"
+                        if Path(expected_file).exists():
+                            logger.info(f"Successfully downloaded via yt-dlp: {expected_file}")
+                            return expected_file
+                        else:
+                            logger.error(f"yt-dlp download completed but file not found: {expected_file}")
+                            
+                except Exception as e:
+                    logger.error(f"yt-dlp fallback failed for {video_id}: {e}", exc_info=True)
                     
             except Exception as e:
                 logger.error(f"NexGen API failed for {video_id}: {e}", exc_info=True)
