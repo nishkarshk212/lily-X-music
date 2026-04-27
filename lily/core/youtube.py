@@ -91,49 +91,82 @@ class YouTube:
         if Path(filename).exists():
             return filename
 
-        # Use NexGen API only (No fallback to yt-dlp)
+        # Use NexGen API with proper timeout and retry logic
         api_type = "video" if video else "song"
         api_url = f"{config.API_URL}/{api_type}/{video_id}?api={config.API_KEY}"
         
-        async with aiohttp.ClientSession() as session:
+        # Configure timeout for the session
+        timeout = aiohttp.ClientTimeout(total=60, connect=30, sock_connect=30, sock_read=60)
+        
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             try:
                 logger.info(f"Trying NexGen API for {video_id} ({api_type})")
-                for attempt in range(5):
-                    async with session.get(api_url) as response:
-                        logger.info(f"NexGen API response status: {response.status}")
-                        if response.status != 200:
-                            logger.error(f"NexGen API returned status {response.status}")
-                            break
+                max_attempts = 5
+                
+                for attempt in range(1, max_attempts + 1):
+                    try:
+                        logger.info(f"NexGen API attempt {attempt}/{max_attempts} for {video_id}")
                         
-                        data = await response.json()
-                        status = data.get("status", "").lower()
-                        logger.info(f"NexGen API status for {video_id}: {status}")
+                        async with session.get(api_url) as response:
+                            logger.info(f"NexGen API response status: {response.status}")
+                            if response.status != 200:
+                                logger.error(f"NexGen API returned status {response.status}")
+                                if attempt < max_attempts:
+                                    wait_time = min(attempt * 3, 10)  # Exponential backoff: 3s, 6s, 9s, 10s, 10s
+                                    logger.info(f"Waiting {wait_time}s before retry...")
+                                    await asyncio.sleep(wait_time)
+                                continue
+                            
+                            data = await response.json()
+                            status = data.get("status", "").lower()
+                            logger.info(f"NexGen API status for {video_id}: {status}")
 
-                        if status == "done":
-                            download_url = data.get("link")
-                            logger.info(f"NexGen API download link: {download_url}")
-                            if download_url:
-                                async with session.get(download_url) as file_response:
-                                    if file_response.status == 200:
-                                        os.makedirs("downloads", exist_ok=True)
-                                        with open(filename, 'wb') as f:
-                                            while True:
-                                                chunk = await file_response.content.read(8192)
-                                                if not chunk:
-                                                    break
-                                                f.write(chunk)
-                                        logger.info(f"Successfully downloaded via NexGen: {filename}")
-                                        return filename
-                                    else:
-                                        logger.error(f"Failed to download file: {file_response.status}")
-                            break
-                        elif status == "downloading":
-                            logger.info(f"Still downloading... waiting 5 seconds")
-                            await asyncio.sleep(5)
-                        else:
-                            logger.error(f"Unexpected NexGen status: {status}, response: {data}")
-                            break
-                logger.error(f"NexGen API failed after 5 attempts for {video_id}")
+                            if status == "done":
+                                download_url = data.get("link")
+                                logger.info(f"NexGen API download link received")
+                                if download_url:
+                                    # Download the actual file
+                                    async with session.get(download_url) as file_response:
+                                        if file_response.status == 200:
+                                            os.makedirs("downloads", exist_ok=True)
+                                            with open(filename, 'wb') as f:
+                                                while True:
+                                                    chunk = await file_response.content.read(8192)
+                                                    if not chunk:
+                                                        break
+                                                    f.write(chunk)
+                                            logger.info(f"Successfully downloaded via NexGen: {filename}")
+                                            return filename
+                                        else:
+                                            logger.error(f"Failed to download file: {file_response.status}")
+                                            break
+                                else:
+                                    logger.error(f"No download link in response")
+                                    break
+                            elif status == "downloading":
+                                logger.info(f"Still processing... waiting 5 seconds (attempt {attempt})")
+                                await asyncio.sleep(5)
+                                # Don't count "downloading" status as a failed attempt
+                                continue
+                            else:
+                                logger.error(f"Unexpected NexGen status: {status}, response: {data}")
+                                break
+                                
+                    except asyncio.TimeoutError:
+                        logger.warning(f"NexGen API timeout on attempt {attempt}/{max_attempts}")
+                        if attempt < max_attempts:
+                            wait_time = min(attempt * 5, 15)  # Longer wait for timeouts
+                            logger.info(f"Waiting {wait_time}s before retry after timeout...")
+                            await asyncio.sleep(wait_time)
+                        continue
+                    except aiohttp.ClientError as e:
+                        logger.warning(f"NexGen API client error on attempt {attempt}: {e}")
+                        if attempt < max_attempts:
+                            wait_time = min(attempt * 3, 10)
+                            await asyncio.sleep(wait_time)
+                        continue
+                        
+                logger.error(f"NexGen API failed after {max_attempts} attempts for {video_id}")
             except Exception as e:
                 logger.error(f"NexGen API failed for {video_id}: {e}", exc_info=True)
         
