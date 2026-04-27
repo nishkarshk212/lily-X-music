@@ -96,13 +96,13 @@ class YouTube:
         api_type = "video" if video else "song"
         api_url = f"{config.API_URL}/{api_type}/{video_id}?api={config.API_KEY}"
         
-        # Configure timeout for the session
-        timeout = aiohttp.ClientTimeout(total=60, connect=30, sock_connect=30, sock_read=60)
+        # Configure timeout for the session (reduced for faster fallback)
+        timeout = aiohttp.ClientTimeout(total=30, connect=15, sock_connect=15, sock_read=30)
         
         async with aiohttp.ClientSession(timeout=timeout) as session:
             try:
                 logger.info(f"Trying NexGen API for {video_id} ({api_type})")
-                max_attempts = 5
+                max_attempts = 2
                 
                 for attempt in range(1, max_attempts + 1):
                     try:
@@ -156,7 +156,7 @@ class YouTube:
                     except asyncio.TimeoutError:
                         logger.warning(f"NexGen API timeout on attempt {attempt}/{max_attempts}")
                         if attempt < max_attempts:
-                            wait_time = min(attempt * 5, 15)  # Longer wait for timeouts
+                            wait_time = 2  # Reduced wait time
                             logger.info(f"Waiting {wait_time}s before retry after timeout...")
                             await asyncio.sleep(wait_time)
                         continue
@@ -170,36 +170,48 @@ class YouTube:
                 logger.error(f"NexGen API failed after {max_attempts} attempts for {video_id}")
                 
                 # Fallback to NubCoder API if NexGen fails
-                logger.info(f"Trying fallback NubCoder API for {video_id}")
+                logger.info(f"Trying fallback NubCoder API for {video_id} (2 attempts)")
                 nubcoder_url = f"{config.API_BASE_URL}/download/{video_id}?token={config.API_TOKEN}"
                 
-                try:
-                    async with session.get(nubcoder_url) as response:
-                        if response.status == 200:
-                            data = await response.json()
-                            download_url = data.get("download_url") or data.get("link") or data.get("url")
-                            
-                            if download_url:
-                                logger.info(f"NubCoder API download link received for {video_id}")
-                                async with session.get(download_url) as file_response:
-                                    if file_response.status == 200:
-                                        os.makedirs("downloads", exist_ok=True)
-                                        with open(filename, 'wb') as f:
-                                            while True:
-                                                chunk = await file_response.content.read(8192)
-                                                if not chunk:
-                                                    break
-                                                f.write(chunk)
-                                        logger.info(f"Successfully downloaded via NubCoder: {filename}")
-                                        return filename
-                                    else:
-                                        logger.error(f"NubCoder file download failed: {file_response.status}")
+                nubcoder_max_attempts = 2
+                for nub_attempt in range(1, nubcoder_max_attempts + 1):
+                    try:
+                        logger.info(f"NubCoder API attempt {nub_attempt}/{nubcoder_max_attempts} for {video_id}")
+                        async with session.get(nubcoder_url) as response:
+                            if response.status == 200:
+                                data = await response.json()
+                                download_url = data.get("download_url") or data.get("link") or data.get("url")
+                                
+                                if download_url:
+                                    logger.info(f"NubCoder API download link received for {video_id}")
+                                    async with session.get(download_url) as file_response:
+                                        if file_response.status == 200:
+                                            os.makedirs("downloads", exist_ok=True)
+                                            with open(filename, 'wb') as f:
+                                                while True:
+                                                    chunk = await file_response.content.read(8192)
+                                                    if not chunk:
+                                                        break
+                                                    f.write(chunk)
+                                            logger.info(f"Successfully downloaded via NubCoder: {filename}")
+                                            return filename
+                                        else:
+                                            logger.error(f"NubCoder file download failed: {file_response.status}")
+                                            break
+                                else:
+                                    logger.error(f"No download link in NubCoder response")
+                                    break
                             else:
-                                logger.error(f"No download link in NubCoder response")
-                        else:
-                            logger.error(f"NubCoder API returned status {response.status}")
-                except Exception as e:
-                    logger.error(f"NubCoder API fallback failed: {e}", exc_info=True)
+                                logger.error(f"NubCoder API returned status {response.status}")
+                                if nub_attempt < nubcoder_max_attempts:
+                                    logger.info(f"Waiting 3s before NubCoder retry...")
+                                    await asyncio.sleep(3)
+                                continue
+                    except Exception as e:
+                        logger.error(f"NubCoder API attempt {nub_attempt} failed: {e}")
+                        if nub_attempt < nubcoder_max_attempts:
+                            await asyncio.sleep(3)
+                        continue
                 
                 # Second fallback: Use yt-dlp to download directly from YouTube
                 logger.info(f"Trying second fallback yt-dlp for {video_id}")
