@@ -27,16 +27,26 @@ async def log_all_messages(_, m: types.Message):
     logger.info(f"Message received: {m.text or m.caption or 'Media'} in chat {m.chat.id} from {m.from_user.id if m.from_user else 'System'}")
 
 # Debug: Log all messages to see if filters are working
-@app.on_message(filters.command(["play", "playforce", "vplay", "vplayforce"]), group=-10)
-async def debug_play_filter(_, m: types.Message):
-    logger.info(f"DEBUG: Play command detected in filter - chat: {m.chat.id}, type: {m.chat.type}, user: {m.from_user.id if m.from_user else 'None'}")
+# DISABLED FOR DEBUGGING
+# @app.on_message(filters.command(["play", "playforce", "vplay", "vplayforce"]), group=-10)
+# async def debug_play_filter(_, m: types.Message):
+#     logger.info(f"DEBUG: Play command detected in filter")
+
+
+# TEST: Simple play handler without decorators
+@app.on_message(filters.command(["testplay"]) & filters.group)
+async def test_play_handler(_, m: types.Message):
+    logger.info(f">>> TEST PLAY HANDLER TRIGGERED <<< by {m.from_user.id}")
+    await m.reply_text("Test play handler is working!")
+
+
 
 @app.on_message(
     filters.command(["play", "playforce", "vplay", "vplayforce"])
     & filters.group
 )
 @lang.language()
-@checkUB
+# @checkUB  # TEMPORARILY DISABLED FOR TESTING
 async def play_hndlr(
     _,
     m: types.Message,
