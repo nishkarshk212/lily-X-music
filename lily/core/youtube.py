@@ -169,7 +169,45 @@ class YouTube:
                         
                 logger.error(f"NexGen API failed after {max_attempts} attempts for {video_id}")
                 
-                # Fallback to NubCoder API if NexGen fails
+                # Fallback to XBit API if NexGen fails
+                logger.info(f"Trying fallback XBit API for {video_id}")
+                xbit_api_type = "video" if video else "song"
+                xbit_url = f"{config.XBIT_API_URL}/{xbit_api_type}/{video_id}?api={config.XBIT_API_KEY}"
+                
+                try:
+                    async with session.get(xbit_url) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            status = data.get("status", "").lower()
+                            
+                            if status == "success":
+                                download_url = data.get("audio_url") if not video else data.get("video_url")
+                                
+                                if download_url:
+                                    logger.info(f"XBit API download link received for {video_id}")
+                                    async with session.get(download_url) as file_response:
+                                        if file_response.status == 200:
+                                            os.makedirs("downloads", exist_ok=True)
+                                            with open(filename, 'wb') as f:
+                                                while True:
+                                                    chunk = await file_response.content.read(8192)
+                                                    if not chunk:
+                                                        break
+                                                    f.write(chunk)
+                                            logger.info(f"Successfully downloaded via XBit: {filename}")
+                                            return filename
+                                        else:
+                                            logger.error(f"XBit file download failed: {file_response.status}")
+                                else:
+                                    logger.error(f"No download link in XBit response")
+                            else:
+                                logger.error(f"XBit API returned status: {status}")
+                        else:
+                            logger.error(f"XBit API returned HTTP status {response.status}")
+                except Exception as e:
+                    logger.error(f"XBit API failed: {e}")
+                
+                # Fallback to NubCoder API if XBit also fails
                 logger.info(f"Trying fallback NubCoder API for {video_id} (2 attempts)")
                 nubcoder_url = f"{config.API_BASE_URL}/download/{video_id}?token={config.API_TOKEN}"
                 
