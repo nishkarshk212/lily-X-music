@@ -42,6 +42,8 @@ class Config:
         self.API_KEY = getenv("API_KEY", "NxGBNexGenBots08f955")
         self.XBIT_API_URL = getenv("XBIT_API_URL", "https://tgapi.xbitcode.com")
         self.XBIT_API_KEY = getenv("XBIT_API_KEY", "xbit_40gZEycIlXXF38AlKKU4I96ZnNaiDFOV")
+        self.YOUTUBE_API_KEY = getenv("YOUTUBE_API_KEY", "")
+        self.YOUTUBE_API_KEY_2 = getenv("YOUTUBE_API_KEY_2", "")
         self.API_BASE_URL = getenv("API_BASE_URL", "http://api.nubcoder.com")
         self.API_TOKEN = getenv("API_TOKEN", "")
         self.DEFAULT_THUMB = getenv("DEFAULT_THUMB", "https://te.legra.ph/file/3e40a408286d4eda24191.jpg")
